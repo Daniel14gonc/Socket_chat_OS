@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package chat;
+
+// ---------------- Encoding de status ----------------
+
+// ACTIVO -> 1
+// OCUPADO -> 2
+// INACTIVO -> 3
+
+
+// ---------------- ERROR CODES ----------------
+// 400: Bad request
+// 200: OK
+
+// ---------------- MESSAGE STRUCT ----------------
+
+// message_type es un booleano que indicara si el mensaje es privado o al chal general
+// Siendo False privado y True Chat General (Broadcasting) por esa razón  recipient es opcional
+// pues el Chat general no requiere dstinatario 
+
+message newMessage {
+    required bool message_type = 1;
+    required string sender = 2;
+    optional string recipient = 3;
+    required string message = 4;
+}
+
+// ---------------- USER STRUCTS ----------------
+
+// Al registrar un usuario se define su status por default, que es 1, o sea ACTIVO.
+
+message UserRegister {
+    required string username = 1;
+    required string ip = 2;
+}
+
+// Se tiene un bool de identificacion del tipo de request
+// que se esta solicitando (type_request). Si type_request es true se esta solicitando
+// la lista de los usuarios conectados. Si es false se solicita informacion de 
+// un solo usuario.
+
+message UserInfoRequest {
+    required bool type_request = 1;
+    optional string user = 2;
+}
+
+
+// Se recibe el username del usuario que quiere cambiar su status y el nuevo status
+// que va acorde al encoding previamente mencionado. Si el numero de encoding no existe
+// o el usuario no existe, se devuelve un codigo de error 400.
+
+message ChangeStatus {
+    required string username = 1;
+    required int32 newStatus = 2;
+}
+
+
+// ---------------- USER REQUEST----------------
+
+// Esta estructura se utiliza para realizar las requests al servidor. 
+// Como se observa tiene diferentes opciones de lo que se le puede solicitar,
+// basadas en las estructuras previamente definidas en USER STRUCTS. Tiene un solo
+// campo opcional que es option. A continuacion se indican las opciones posibles
+// de valores que se pueden enviar en el campo option:
+
+// 1 -> Registro de Usuario
+// 2 -> Solicitud de informacion de usuario
+// 3 -> Solicitud de cambio de status
+// 4 -> Envio de nuevo mensaje
+
+message UserRequest {
+    required int32 option = 1;
+    optional UserRegister newUser = 2;
+    optional UserInfoRequest infoRequest = 3;
+    optional ChangeStatus status = 4;
+    optional newMessage message = 5;
+}
+
+
+// ---------------- SERVER STRUCTS ----------------
+
+// UserInfo tiene sus 3 campos opcionales ya que la estructura se utilizara
+// para devolver diferentes conjuntos de atributos del Usuario
+// En los siguientes casos: 
+// 1. Listado  de  usuarios  conectados
+// 2. Obtencion de informacion de usuario
+
+message UserInfo {
+    optional string username = 1;
+    optional string ip = 2;
+    optional int32 status = 3;
+}
+
+
+message AllConnectedUsers {
+    repeated UserInfo connectedUsers = 1;
+}
+
+// ---------------- SERVER RESPONSE ----------------
+
+// Para los campos required el server contesta: En el campo option la opcion que hizo,
+// en el campo code el codigo resultante de hacer la accion.
+// Las opciones son las mismas indicadas en el campo option de USER REQUEST.
+// Es posible que se genere un codigo 200, si se proceso adecuadamente la instruccion
+// o 400 si hubo un error.
+// Mensaje complementario al codigo que retorno el server.
+//-----------------------------------------------------------
+// Para los campos optional el servidor contesta al cliente 
+// Segun su solicitud que haya hecho
+
+message ServerResponse {
+    required int32 option = 1;
+    required int32 code = 2;
+    required string serverMessage = 3;
+    optional AllConnectedUsers connectedUsers = 4;
+    optional newMessage message = 5;
+    optional UserInfo userInfoResponse = 6;
+    optional ChangeStatus change = 7;
+}
