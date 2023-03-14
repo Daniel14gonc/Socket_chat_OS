@@ -68,6 +68,7 @@ message ChangeStatus {
 // 2 -> Solicitud de informacion de usuario
 // 3 -> Solicitud de cambio de status
 // 4 -> Envio de nuevo mensaje
+// 5 -> Heartbeat
 
 message UserRequest {
     required int32 option = 1;
