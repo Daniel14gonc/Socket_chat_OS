@@ -26,15 +26,15 @@ int main() {
     char buffer[CLIENT_BUFFER_SIZE] = {0};
 
     chat::UserRequest userRequest;
-    chat::newMessage newMessage;
-    userRequest.set_option(1);
-    newMessage.set_sender("Sebas");
-    newMessage.set_message("Gay");
-    newMessage.set_message_type(false);
+    chat::newMessage newMessage = new chat::newMessage();
+    userRequest.set_option(2);
+    newMessage->set_sender("Sebas");
+    newMessage->set_message("Gay");
+    newMessage->set_message_type(false);
     userRequest.set_allocated_message(&newMessage);
 
     string request;
-    newMessage.SerializeToString(&request); 
+    userRequest.SerializeToString(&request); 
     strcpy(buffer, request.c_str());
 
     printf("String: %s\n", buffer);
@@ -61,9 +61,10 @@ int main() {
 
     write(clientDescriptor, buffer, CLIENT_BUFFER_SIZE - 1);
     printf("\nMessage sent\n");
-    int valread = read(clientDescriptor, buffer, 1024);
+    int valread = read(clientDescriptor, buffer, CLIENT_BUFFER_SIZE);
     printf("%s\n", buffer);
 
     close(clientDescriptor);
+    printf("pase\n");
     return 0;
 }

@@ -64,29 +64,31 @@ int main(){
     string request = (string) buffer;
     UserRequest.ParseFromString(request);
 
-    //int option = UserRequest.option();
+    printf("La opcion es %d \n",UserRequest.option());
 
-    switch (option)
-    {
-    case 1:
-        printf("Registro de Usuario\n");
-        break;
+    // int option = 1;
+
+    // switch (option)
+    // {
+    // case 1:
+    //     printf("Registro de Usuario\n");
+    //     break;
     
-    case 2:
-        printf("Informacion de usuario\n");
-        break;
-    case 3:
-        printf("Cambio de status\n");
-        break;
-    case 4:
-        printf("Nuevo mensaje\n");
-        break;
-    case 5:
-        printf("Hearbeat\n");
-        break;
-    default:
-        break;
-    }
+    // case 2:
+    //     printf("Informacion de usuario\n");
+    //     break;
+    // case 3:
+    //     printf("Cambio de status\n");
+    //     break;
+    // case 4:
+    //     printf("Nuevo mensaje\n");
+    //     break;
+    // case 5:
+    //     printf("Hearbeat\n");
+    //     break;
+    // default:
+    //     break;
+    // }
 
     send(new_socket , hello , strlen(hello) , 0 );
     printf("Hello message sent\n");
