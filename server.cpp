@@ -6,25 +6,27 @@
 #include <unistd.h>
 #include <string.h>
 #define PORT 8080
+#define CLIENT_BUFFER_SIZE 3072
 
 //ProtoBuff
 #include "project.pb.h"
 
 using namespace std;
+using namespace chat;
 
 int main(){
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    chat::newMessage newMessage;
-    chat::UserRequest UserRequest;
+    
+    UserRequest UserRequest;
 
 
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[1024] = {0};
+    char buffer[CLIENT_BUFFER_SIZE] = {0};
     const char* hello = "Hello from server";
 
     // Creating socket file descriptor
@@ -59,14 +61,23 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    valread = read(new_socket , buffer, 1024);
+    valread = read(new_socket , buffer, CLIENT_BUFFER_SIZE - 1);
+    printf("Size of buff: %lu\n", strlen(buffer));
+    buffer[valread] = '\0';
 
     string request = (string) buffer;
-    UserRequest.ParseFromString(request);
-
+    UserRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
     printf("La opcion es %d \n",UserRequest.option());
 
-    // int option = 1;
+    newMessage userMessage = UserRequest.message();
+
+    if (userMessage.has_message()) {
+        cout << "El mensaje es: " << userMessage.message() << endl;
+    } else {
+        cout << "El campo 'message' no está presente en la estructura UserRequest." << endl;
+    }
+
+    int option = UserRequest.option();
 
     // switch (option)
     // {

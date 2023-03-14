@@ -15,6 +15,7 @@
 #define CLIENT_BUFFER_SIZE 3072
 
 using namespace std;
+using namespace chat;
 
 int main() {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -23,22 +24,22 @@ int main() {
     int clientDescriptor = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serverAddress;
     int status;
-    char buffer[CLIENT_BUFFER_SIZE] = {0};
+    char buffer[CLIENT_BUFFER_SIZE];
 
-    chat::UserRequest userRequest;
-    chat::newMessage newMessage = new chat::newMessage();
+    UserRequest userRequest;
+    newMessage* userMessage = userRequest.mutable_message();
     userRequest.set_option(2);
-    newMessage->set_sender("Sebas");
-    newMessage->set_message("Gay");
-    newMessage->set_message_type(false);
-    userRequest.set_allocated_message(&newMessage);
+    userMessage->set_sender("Sebas");
+    userMessage->set_message("Sebas es una muy buena persona. Le gusta rezar.");
+    userMessage->set_message_type(false);
 
-    string request;
-    userRequest.SerializeToString(&request); 
-    strcpy(buffer, request.c_str());
+    if (userRequest.has_message()) {
+        const newMessage& message = userRequest.message();
+        if (message.has_message())
+            cout << "Si tiene mensaje " << message.message() << endl;
+    }
 
-    printf("String: %s\n", buffer);
-
+    string request = userRequest.SerializeAsString();
     
     if (clientDescriptor < 0) {
         perror("socket creation error");
@@ -59,7 +60,7 @@ int main() {
         return -1;
     }
 
-    write(clientDescriptor, buffer, CLIENT_BUFFER_SIZE - 1);
+    write(clientDescriptor, request.c_str(), request.size());
     printf("\nMessage sent\n");
     int valread = read(clientDescriptor, buffer, CLIENT_BUFFER_SIZE);
     printf("%s\n", buffer);
