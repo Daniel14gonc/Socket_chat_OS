@@ -28,7 +28,7 @@ int main() {
 
     UserRequest userRequest;
     newMessage* userMessage = userRequest.mutable_message();
-    userRequest.set_option(2);
+    userRequest.set_option(4);
     userMessage->set_sender("Sebas");
     userMessage->set_message("Sebas es una muy buena persona. Le gusta rezar.");
     userMessage->set_message_type(false);

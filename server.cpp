@@ -20,6 +20,13 @@ int main(){
 
     
     UserRequest UserRequest;
+    
+    // User Request
+    newMessage userMessage;
+    UserRegister userRegister;
+    UserInfoRequest userInfoRequest;
+    ChangeStatus changeStatus;
+
 
 
     int server_fd, new_socket, valread;
@@ -61,45 +68,66 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
+   /*ssize_t nbytes;
+    string request = "";
+    bool finished = false;
+
+    while((nbytes = read(new_socket, buffer, 1)) > 0) {
+        if (buffer[0] != '\0') {
+            printf("Read f\n");
+            request += buffer[0];
+        }
+    }
+    */ 
+
     valread = read(new_socket , buffer, CLIENT_BUFFER_SIZE - 1);
-    printf("Size of buff: %lu\n", strlen(buffer));
     buffer[valread] = '\0';
 
     string request = (string) buffer;
     UserRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
-    printf("La opcion es %d \n",UserRequest.option());
-
-    newMessage userMessage = UserRequest.message();
-
-    if (userMessage.has_message()) {
-        cout << "El mensaje es: " << userMessage.message() << endl;
-    } else {
-        cout << "El campo 'message' no está presente en la estructura UserRequest." << endl;
-    }
+        
 
     int option = UserRequest.option();
-
-    // switch (option)
-    // {
-    // case 1:
-    //     printf("Registro de Usuario\n");
-    //     break;
     
-    // case 2:
-    //     printf("Informacion de usuario\n");
-    //     break;
-    // case 3:
-    //     printf("Cambio de status\n");
-    //     break;
-    // case 4:
-    //     printf("Nuevo mensaje\n");
-    //     break;
-    // case 5:
-    //     printf("Hearbeat\n");
-    //     break;
-    // default:
-    //     break;
-    // }
+    switch (option)
+    {
+    case 1:// Registro de Usuarios
+        userRegister = UserRequest.newuser();
+        cout << "El username es: " << userRegister.username() << endl;
+        cout << "El ip es: " << userRegister.ip() << endl;
+
+        break;
+    
+    case 2:// Informacion de usuario
+        userInfoRequest = UserRequest.inforequest(); 
+        cout << "El tipo de request es: " << userInfoRequest.type_request() << endl; 
+        cout << "El usuario es: " << userInfoRequest.user() << endl; 
+
+        printf("Informacion de usuario\n");
+        break;
+    case 3:// Cambio de status
+        changeStatus = UserRequest.status();
+        cout << "El usuario es: " << changeStatus.username() << endl;
+        cout << "El nuevo status es: " << changeStatus.newstatus() << endl;
+        break;
+    case 4://Nuevo mensaje
+        userMessage = UserRequest.message();
+        cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
+        cout << "El emisor es: " << userMessage.sender() << endl;
+        cout << "El receptor es: " << userMessage.recipient() << endl;
+        cout << "El mensaje es: " << userMessage.message() << endl;
+
+
+        
+        break;
+    case 5://Heartbeat
+        printf("Hearbeat\n");
+        break;
+    default:
+        break;
+    }
+
+
 
     send(new_socket , hello , strlen(hello) , 0 );
     printf("Hello message sent\n");
