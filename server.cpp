@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <list>
+#include <fcntl.h>
 
 #define PORT 8080
 #define CLIENT_BUFFER_SIZE 3072
@@ -51,9 +52,11 @@ int deleteUser(string usernamef, string ipf) {
     return 0;
 }
 
-void generalMessage(newMessage userMessage, ServerResponse serverResponse) {
-     serverResponse.mutable_message()->CopyFrom(userMessage);
+void generalMessage(newMessage userMessage) {
+    ServerResponse serverResponse;
+    serverResponse.mutable_message()->CopyFrom(userMessage);
     serverResponse.set_option(4);
+    serverResponse.set_code(200);
     serverResponse.set_servermessage("Mensaje enviado");
     string response = serverResponse.SerializeAsString();
     
@@ -62,9 +65,10 @@ void generalMessage(newMessage userMessage, ServerResponse serverResponse) {
     }
 }
 
-void directMessage(newMessage userMessage, ServerResponse serverResponse) {
+void directMessage(newMessage userMessage) {
+    ServerResponse serverResponse;
     string username = userMessage.recipient();
-     serverResponse.mutable_message()->CopyFrom(userMessage);
+    serverResponse.mutable_message()->CopyFrom(userMessage);
     serverResponse.set_option(4);
     serverResponse.set_code(200);
     serverResponse.set_servermessage("Mensaje enviado");
@@ -73,6 +77,7 @@ void directMessage(newMessage userMessage, ServerResponse serverResponse) {
     for (User user : connectedUsers) {
         if (user.username == username) {
             userFound = true;
+            cout << username << endl;
             send(user.socketFD , response.c_str() , response.size() , 0 );
         }
     }
@@ -128,6 +133,7 @@ void* connectionHandler(void* arg) {
         cout << option << endl;
 
         string response;
+        bool userFound = false;
         
         switch (option)
         {
@@ -190,7 +196,7 @@ void* connectionHandler(void* arg) {
                 serverResponse.set_code(200);
                 serverResponse.set_servermessage("Informacion de un usuario");
                 
-                bool userFound = false;
+                userFound = false;
                 for (User user : connectedUsers) {
                     if (user.username == userInfoRequest.user()) {
                         userFound = true;
@@ -217,8 +223,8 @@ void* connectionHandler(void* arg) {
             cout << "El usuario es: " << changeStatus.username() << endl;
             cout << "El nuevo status es: " << changeStatus.newstatus() << endl;
 
-            bool userFound = false;
-            for (User user : connectedUsers) {
+            userFound = false;
+            for (auto& user : connectedUsers) {
                 if (user.username == changeStatus.username()) {
                     user.status = changeStatus.newstatus();
                     userFound = true;
@@ -236,16 +242,23 @@ void* connectionHandler(void* arg) {
             }   
 
             response = serverResponse.SerializeAsString();
+            
 
             break;
         case 4://Nuevo mensaje
             userMessage = userRequest.message();
+
             if (userMessage.message_type()) {
-                generalMessage(userMessage, serverResponse);
+                generalMessage(userMessage);
             }
             else {
-                directMessage(userMessage, serverResponse);
+                directMessage(userMessage);
             }
+            serverResponse.set_code(200);
+            serverResponse.set_option(4);
+            serverResponse.set_servermessage("Mensaje enviado correctamente.");
+
+            response = serverResponse.SerializeAsString();
             // cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
             // cout << "El emisor es: " << userMessage.sender() << endl;
             // cout << "El receptor es: " << userMessage.recipient() << endl;
@@ -258,9 +271,6 @@ void* connectionHandler(void* arg) {
             notClosed = false;
             break;
         }
-
-
-
         send(new_socket , response.c_str() , response.size() , 0 );
         printf("Hello message sent\n");
     }
