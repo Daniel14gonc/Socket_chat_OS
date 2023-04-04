@@ -68,6 +68,11 @@ void generalMessage(newMessage userMessage) {
 void directMessage(newMessage userMessage) {
     ServerResponse serverResponse;
     string username = userMessage.recipient();
+
+    cout << "Mensaje directo a: " << username << endl;
+    cout << "Mensaje: " << userMessage.message() << endl;
+    cout << "Emisor: " << userMessage.sender() << endl;
+
     serverResponse.mutable_message()->CopyFrom(userMessage);
     serverResponse.set_option(4);
     serverResponse.set_code(200);
@@ -77,7 +82,6 @@ void directMessage(newMessage userMessage) {
     for (User user : connectedUsers) {
         if (user.username == username) {
             userFound = true;
-            cout << username << endl;
             send(user.socketFD , response.c_str() , response.size() , 0 );
         }
     }

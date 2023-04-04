@@ -82,11 +82,12 @@ void* receiveMessages(void* arg) {
             cout << "Server response: " << Smessage << endl;
 
         } else
-        if (option == 4) { // Asumiendo que la opción 5 corresponde a mensajes generales
+        if (option == 4) {
             newMessage msg = serverResponse.message();
             if (msg.message_type()){
                 cout << "\n-------Nuevo mensaje general recibido-------\t\n" << endl;
                 cout << msg.sender() <<": " << msg.message() << endl << endl;
+                break
             }
             else{
 
@@ -97,16 +98,22 @@ void* receiveMessages(void* arg) {
                 else {
                     cout << "Server response: " << Smessage << endl;
                 }
+                break
             }
         } 
 
     }
     pthread_mutex_unlock(&mutexP);
+    return NULL;
 }
 
 
 // TODO: Recibir argumentos de command line
-int main() {
+int main(int argc, char** argv) {
+
+    string username = argv[1];
+    string ip = argv[2];
+
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     int clientDescriptor = socket(AF_INET, SOCK_STREAM, 0);
@@ -119,8 +126,8 @@ int main() {
     
     userRequest.set_option(1);
     
-    registerUser->set_ip("127.0.0.2");
-    registerUser->set_username("user2");
+    registerUser->set_ip(ip);
+    registerUser->set_username(username);
 
     ServerResponse serverResponse;
 
@@ -134,7 +141,7 @@ int main() {
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(PORT);
 
-    if (inet_pton(AF_INET, "127.0.0.2", &serverAddress.sin_addr) <= 0) 
+    if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0) 
     {
         printf("\n Invalid address/ Address not supported \n");
         return -1;
@@ -246,10 +253,14 @@ int main() {
 
                     newMessage* message = userRequest.mutable_message();
 
+                    string input,recipient, message_user;
+                    cin >> recipient;
+                    getline(cin, message_user);
+
                     message->set_message_type(false);
-                    message->set_sender("user");
-                    message->set_recipient("user");
-                    message->set_message("Hola");
+                    message->set_sender(username.c_str());
+                    message->set_recipient(recipient.c_str());
+                    message->set_message(message_user.c_str());
 
                     string request = userRequest.SerializeAsString();
 
@@ -273,6 +284,10 @@ int main() {
                 }
                 case 6:{
                     bandera = 1;
+                    break;
+                }
+                default:{
+                    cout << "Opcion no valida" << endl;
                     break;
                 }
             }
