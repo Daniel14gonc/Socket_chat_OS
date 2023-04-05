@@ -263,7 +263,6 @@ void* connectionHandler(void* arg) {
 
 
             } else {
-                allConnectedUsers = new AllConnectedUsers;
                 printf("Informacion de un usuario\n");
                 serverResponse.set_option(2);
                 serverResponse.set_code(200);
@@ -273,11 +272,13 @@ void* connectionHandler(void* arg) {
                 for (User user : connectedUsers) {
                     if (user.username == userInfoRequest.user()) {
                         userFound = true;
+                        //userInfo = new UserInfo;
+                        //UserInfo* userInfo = serverResponse.add_userinforesponse();
                         userInfo.set_username(user.username);
                         userInfo.set_ip(user.ip);
                         userInfo.set_status(user.status);
-                        allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
-                        serverResponse.set_allocated_connectedusers(allConnectedUsers);
+                        //allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
+                        serverResponse.mutable_userinforesponse()->CopyFrom(userInfo);
                     }
                 }
 

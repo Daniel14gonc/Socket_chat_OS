@@ -75,11 +75,20 @@ void* receiveMessages(void* arg) {
 
         if (option == 2) {
             AllConnectedUsers allConectedUsers = serverResponse.connectedusers();
+            UserInfo userInfo = serverResponse.userinforesponse();
+
             cout << "Server response: " << Smessage << endl;
-        
+
             if (code == 200){
-                cout << "Connected users:" << endl;
-                processAllConnectedUsers(allConectedUsers);
+                if (allConectedUsers.connectedusers().empty()) {
+                    cout << "User info:" << endl;
+                    cout << "\tUsername: " << userInfo.username() << endl;
+                    cout << "\tIP: " << userInfo.ip() << endl;
+                    cout << "\tStatus: " << userInfo.status() << endl;
+                } else {
+                    cout << "Connected users:" << endl;
+                    processAllConnectedUsers(allConectedUsers);
+                }
             }
 
         }else if (option == 3) {
