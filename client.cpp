@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <pthread.h>
-#include <curl/curl.h>
 #include <iostream>
 
 //ProtoBuff

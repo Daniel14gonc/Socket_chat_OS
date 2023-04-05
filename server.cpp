@@ -45,7 +45,7 @@ list<User> connectedUsers;
 
 int isUserConnected(string username, string ip) {
     for (User user : connectedUsers) {
-        if (user.username == username || user.ip == ip) {
+        if (user.username == username && user.ip == ip) {
             return 1;
         }
     }
