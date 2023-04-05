@@ -193,7 +193,9 @@ void* connectionHandler(void* arg) {
         valread = read(new_socket , buffer, CLIENT_BUFFER_SIZE - 1);
         buffer[valread] = '\0';
 
-        cout << valread << endl;
+        if (valread <= 0) {
+            break;
+        }
 
         string request = (string) buffer;
         userRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
