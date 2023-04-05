@@ -148,15 +148,6 @@ void* connectionHandler(void* arg) {
     // Se obtiene el socket_fd de la estructura
     int new_socket = data->socketFD;
 
-    char ip[INET_ADDRSTRLEN];
-    sockaddr_in client_addr{};
-    socklen_t client_addr_len = sizeof(client_addr);
-    if (getpeername(new_socket, (sockaddr*) &client_addr, &client_addr_len) < 0) {
-        std::cerr << "Error getting client address" << std::endl;
-    }
-    inet_ntop(AF_INET, &client_addr.sin_addr, ip, INET_ADDRSTRLEN);
-    std::cout << "Client IP address: " << ip << std::endl;
-
     int valread;
     char buffer[CLIENT_BUFFER_SIZE] = {0};
     const char* hello = "Hello from server";
@@ -377,7 +368,12 @@ void* connectionHandler(void* arg) {
     pthread_exit(0);
 }
 
-int main(){
+int main(int argc, char** argv){
+    if (argc <= 1) {
+        cout << "Error ingrese el puerto." << endl;
+        return -1;
+    }
+    int port = stoi(argv[1]);
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
@@ -400,7 +396,7 @@ int main(){
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons( PORT );
+    address.sin_port = htons( port );
 
     // Forcefully attaching socket to the port 8080
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0){

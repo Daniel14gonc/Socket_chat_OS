@@ -8,7 +8,8 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <pthread.h>
-
+#include <curl/curl.h>
+#include <iostream>
 
 //ProtoBuff
 #include "project.pb.h"
@@ -122,25 +123,32 @@ void* receiveMessages(void* arg) {
 }
 
 string get_ip() {
-    char hostname[128];
+    int sockfd;
+    struct addrinfo hints, *res;
+    char ipstr[INET_ADDRSTRLEN];
+
     string ip;
     ip = "";
-    if (gethostname(hostname, sizeof(hostname)) == -1) {
-        std::cerr << "Error getting hostname." << std::endl;
-        return ip;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    getaddrinfo("www.google.com", "http", &hints, &res);
+
+    void *addr;
+    if (res->ai_family == AF_INET) { // IPv4
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *)res->ai_addr;
+        addr = &(ipv4->sin_addr);
+    } else { // IPv6
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
+        addr = &(ipv6->sin6_addr);
     }
 
-    struct hostent *he;
-    if ((he = gethostbyname(hostname)) == nullptr) {
-        std::cerr << "Error getting host information." << std::endl;
-        return ip;
-    }
+    inet_ntop(res->ai_family, addr, ipstr, sizeof(ipstr));
+    ip = ipstr;
 
-    struct in_addr **addr_list;
-    addr_list = (struct in_addr **)he->h_addr_list;
-    for (int i = 0; addr_list[i] != nullptr; ++i) {
-        ip = inet_ntoa(*addr_list[i]);
-    }
+    freeaddrinfo(res);
 
     return ip;
 }
@@ -148,11 +156,14 @@ string get_ip() {
 
 // TODO: Recibir argumentos de command line
 int main(int argc, char** argv) {
-    // string own_ip = get_ip();
+    if (argc != 4) {
+        cout << "Error ingrese todos los argumentos de linea de comandos." << endl;
+        return -1;
+    }
+    string own_ip = get_ip();
 
     string username = argv[1];
     string ip = argv[2];
-    ip = "127.0.0.1";
     int port = stoi(argv[3]);
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -167,7 +178,7 @@ int main(int argc, char** argv) {
     
     userRequest.set_option(1);
     
-    registerUser->set_ip(ip);
+    registerUser->set_ip(own_ip);
     registerUser->set_username(username);
 
     ServerResponse serverResponse;
