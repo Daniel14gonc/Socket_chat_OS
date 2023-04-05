@@ -121,12 +121,39 @@ void* receiveMessages(void* arg) {
     pthread_exit(0);
 }
 
+string get_ip() {
+    char hostname[128];
+    string ip;
+    ip = "";
+    if (gethostname(hostname, sizeof(hostname)) == -1) {
+        std::cerr << "Error getting hostname." << std::endl;
+        return ip;
+    }
+
+    struct hostent *he;
+    if ((he = gethostbyname(hostname)) == nullptr) {
+        std::cerr << "Error getting host information." << std::endl;
+        return ip;
+    }
+
+    struct in_addr **addr_list;
+    addr_list = (struct in_addr **)he->h_addr_list;
+    for (int i = 0; addr_list[i] != nullptr; ++i) {
+        ip = inet_ntoa(*addr_list[i]);
+    }
+
+    return ip;
+}
+
 
 // TODO: Recibir argumentos de command line
 int main(int argc, char** argv) {
+    // string own_ip = get_ip();
 
     string username = argv[1];
     string ip = argv[2];
+    ip = "127.0.0.1";
+    int port = stoi(argv[3]);
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -153,23 +180,18 @@ int main(int argc, char** argv) {
     }
 
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(PORT);
+    serverAddress.sin_port = htons(port);
 
     if (inet_pton(AF_INET, ip.c_str(), &serverAddress.sin_addr) <= 0) 
     {
         printf("\n Invalid address/ Address not supported \n");
         return -1;
     }
-    int epochs = 0;
-    while((status = connect(clientDescriptor, (struct sockaddr*)&serverAddress, sizeof(serverAddress))) < 0 and epochs < 100) {
-        epochs += 1;
-    }
-    cout << "Connection succesful" << endl;
 
-    // if ((status = connect(clientDescriptor, (struct sockaddr*)&serverAddress, sizeof(serverAddress))) < 0) {
-    //     printf("\nConnection failed2\n");
-    //     return -1;
-    // }
+    if ((status = connect(clientDescriptor, (struct sockaddr*)&serverAddress, sizeof(serverAddress))) < 0) {
+        printf("\nConnection failed2\n");
+        return -1;
+    }
 
     write(clientDescriptor, request.c_str(), request.size());
     cout << "Requesting connection to server..." << endl;

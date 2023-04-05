@@ -8,6 +8,7 @@
 #include <list>
 #include <fcntl.h>
 #include <chrono>
+#include <arpa/inet.h>
 
 #define PORT 8080
 #define CLIENT_BUFFER_SIZE 3072
@@ -141,6 +142,21 @@ void activeUser(int fd, bool* isActive) {
 }
 
 void* connectionHandler(void* arg) {
+    
+    struct threadInfo* data = (struct threadInfo*)arg;
+
+    // Se obtiene el socket_fd de la estructura
+    int new_socket = data->socketFD;
+
+    char ip[INET_ADDRSTRLEN];
+    sockaddr_in client_addr{};
+    socklen_t client_addr_len = sizeof(client_addr);
+    if (getpeername(new_socket, (sockaddr*) &client_addr, &client_addr_len) < 0) {
+        std::cerr << "Error getting client address" << std::endl;
+    }
+    inet_ntop(AF_INET, &client_addr.sin_addr, ip, INET_ADDRSTRLEN);
+    std::cout << "Client IP address: " << ip << std::endl;
+
     int valread;
     char buffer[CLIENT_BUFFER_SIZE] = {0};
     const char* hello = "Hello from server";
@@ -155,8 +171,6 @@ void* connectionHandler(void* arg) {
     // Server Response
     ServerResponse serverResponse;
 
-    struct threadInfo* data = (struct threadInfo*)arg;
-
     User user;
 
     AllConnectedUsers allConnectedUsers;
@@ -164,9 +178,6 @@ void* connectionHandler(void* arg) {
     UserInfo userInfo;
 
     pthread_t activityThread;
-
-    // Se obtiene el socket_fd de la estructura
-    int new_socket = data->socketFD;
 
     bool* isActive = new bool;
     *isActive = true;
