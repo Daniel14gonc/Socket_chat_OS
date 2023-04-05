@@ -9,6 +9,8 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <iostream>
+#include <curl/curl.h>
+//#include <jsoncpp/json/json.h>
 
 //ProtoBuff
 #include "project.pb.h"
@@ -121,36 +123,36 @@ void* receiveMessages(void* arg) {
     pthread_exit(0);
 }
 
-string get_ip() {
-    int sockfd;
-    struct addrinfo hints, *res;
-    char ipstr[INET_ADDRSTRLEN];
-
-    string ip;
-    ip = "";
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    getaddrinfo("www.google.com", "http", &hints, &res);
-
-    void *addr;
-    if (res->ai_family == AF_INET) { // IPv4
-        struct sockaddr_in *ipv4 = (struct sockaddr_in *)res->ai_addr;
-        addr = &(ipv4->sin_addr);
-    } else { // IPv6
-        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
-        addr = &(ipv6->sin6_addr);
-    }
-
-    inet_ntop(res->ai_family, addr, ipstr, sizeof(ipstr));
-    ip = ipstr;
-
-    freeaddrinfo(res);
-
-    return ip;
+size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    std::string *response = reinterpret_cast<std::string *>(userdata);
+    response->append(ptr, size * nmemb);
+    return size * nmemb;
 }
+
+size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    ((std::string *)userp)->append((char *)contents, size * nmemb);
+    return size * nmemb;
+}
+
+string get_ip()
+{
+    CURL *curl;
+    CURLcode res;
+    std::string readBuffer;
+
+    curl = curl_easy_init();
+    if (curl)
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.ipify.org");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+    }
+    return readBuffer;
+}
+
 
 
 // TODO: Recibir argumentos de command line
