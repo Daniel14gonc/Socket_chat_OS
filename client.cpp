@@ -40,24 +40,40 @@ void processAllConnectedUsers(const AllConnectedUsers& allUsers) {
     }
 }
 
+
+void* sendHeartbeat(void* arg){
+    int ClientDescriptor = *((int*)arg);
+    while (true){
+        UserRequest userRequest;
+        userRequest.set_option(5);
+        pthread_mutex_lock(&mutexP);
+        string request = userRequest.SerializeAsString();
+        write(ClientDescriptor, request.c_str(), request.size());
+        pthread_mutex_unlock(&mutexP);
+
+        sleep(3000000000);
+    }
+    return NULL;
+}
+
+
 void* receiveMessages(void* arg) {
     int clientDescriptor = *((int*)arg);
     char buffer[CLIENT_BUFFER_SIZE];
     ServerResponse serverResponse;
-    pthread_mutex_lock(&mutexP);
     while (true) {
-
         int valread = read(clientDescriptor, buffer, CLIENT_BUFFER_SIZE);
         if (valread <= 0) {
             break;
         }
         buffer[valread] = '\0';
         serverResponse.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
+        // pthread_mutex_lock(&mutexP);
         int option = serverResponse.option();
         string Smessage = serverResponse.servermessage();
         int code = serverResponse.code();
 
-        if (option == 1) {
+        if (option == 2) {
             AllConnectedUsers allConectedUsers = serverResponse.connectedusers();
             cout << "Server response: " << Smessage << endl;
         
@@ -66,28 +82,16 @@ void* receiveMessages(void* arg) {
                 processAllConnectedUsers(allConectedUsers);
             }
 
-        } else if (option == 2) {
-            AllConnectedUsers allConectedUsers = serverResponse.connectedusers();
-            cout << "Server response: " << Smessage << endl;
-            
-            if (code == 200){
-                const auto& user = allConectedUsers.connectedusers()[0];
-                cout << "User info:" << endl;
-                cout << "\tUsuario: " << user.username() << endl;
-                cout << "\tIP: " << user.ip() << endl;
-                cout << "\tEstado: " << user.status() << endl;
-            }
-
-        } else if (option == 3) {
+        }else if (option == 3) {
             cout << "Server response: " << Smessage << endl;
 
         } else
         if (option == 4) {
             newMessage msg = serverResponse.message();
-            if (msg.message_type()){
+            if (msg.message_type()) {
                 cout << "\n-------Nuevo mensaje general recibido-------\t\n" << endl;
                 cout << msg.sender() <<": " << msg.message() << endl << endl;
-                break
+
             }
             else{
 
@@ -98,13 +102,14 @@ void* receiveMessages(void* arg) {
                 else {
                     cout << "Server response: " << Smessage << endl;
                 }
-                break
+
             }
         } 
+        // pthread_mutex_unlock(&mutexP);
 
     }
-    pthread_mutex_unlock(&mutexP);
-    return NULL;
+
+    pthread_exit(0);
 }
 
 
@@ -189,6 +194,15 @@ int main(int argc, char** argv) {
         }
         pthread_detach(receiveThread); // Desvincula el thread para que no sea necesario esperar a su finalización.
 
+        pthread_t sendThread;
+       // int createResult2 = pthread_create(&sendThread, NULL, sendHeartbeat, (void*)&clientDescriptor);
+        // if (createResult2 != 0) {
+        //     perror("Error al crear el hilo");
+        //     return -1;
+        // }
+      //  pthread_detach(sendThread); // Desvincula el thread para que no sea necesario esperar a su finalización.
+
+
         int bandera =0;
         while (bandera ==0 ){
             cout << "1. Obtener listado de usuarios conectados" << endl;
@@ -196,7 +210,9 @@ int main(int argc, char** argv) {
             cout << "3. Cambio de status de usuario" << endl;
             cout << "4. Mandar mensaje directo" << endl;
             cout << "5. Mandar mensaje general" << endl;
-            cout << "6. Salir" << endl;
+            cout << "6. Ayuda" << endl;
+            cout << "7. Salir" << endl;
+
             int opcion;
             cin >> opcion;
             switch (opcion){
@@ -217,10 +233,14 @@ int main(int argc, char** argv) {
                     UserRequest userRequest;
                     userRequest.set_option(2);
 
+                    string username_search;
+                    cout << "Ingrese el nombre del usuario:" << endl;
+                    cin >> username_search;
+
                     UserInfoRequest* listInfoRequest = userRequest.mutable_inforequest();
                                         
                     listInfoRequest->set_type_request(false);
-                    listInfoRequest->set_user("user");
+                    listInfoRequest->set_user(username_search.c_str());
 
                     string request = userRequest.SerializeAsString();
 
@@ -254,6 +274,7 @@ int main(int argc, char** argv) {
                     newMessage* message = userRequest.mutable_message();
 
                     string input,recipient, message_user;
+                    cout << "Ingrese el nombre del usuario y el mensaje" << endl;
                     cin >> recipient;
                     getline(cin, message_user);
 
@@ -272,10 +293,15 @@ int main(int argc, char** argv) {
                     userRequest.set_option(4);
 
                     newMessage* message = userRequest.mutable_message();
-
+                    cout << "Ingrese el mensaje:" << endl;
+                    string input;
+                    string s;
+                    cin >> s;
+                    getline(cin, input);
+                    input = s + input;
                     message->set_message_type(true);
-                    message->set_sender("user");
-                    message->set_message("Hola");
+                    message->set_sender(username.c_str());
+                    message->set_message(input.c_str());
 
                     string request = userRequest.SerializeAsString();
 
@@ -283,6 +309,19 @@ int main(int argc, char** argv) {
                     break;
                 }
                 case 6:{
+                    cout << "Bienvenido a ayuda" << endl;
+                    cout << "Presione 1 si desea obtener el listado de usuarios conectados" << endl;
+                    cout << "Presione 2 si desea obtener informacion de un usuario especifico" << endl;
+                    cout << "Presione 3 si desea cambiar de status de su usuario" << endl;
+                    cout << "Presione 4 si desea mandar mensaje directo recuerde que el formato es:" << endl;
+                    cout << "usuario mensaje mensaje mensaje" << endl;
+                    cout << "Presione 5 si desea mandar un mensaje general recuerde que el formato es:" << endl;
+                    cout << "mensaje mensaje mensaje" << endl;
+                    cout << "Presionar 6 fue la opción que te trao aqui" << endl;
+                    cout << "Presione 7 si desea salir" << endl;
+                }
+
+                case 7:{
                     bandera = 1;
                     break;
                 }

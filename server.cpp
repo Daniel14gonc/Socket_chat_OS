@@ -7,6 +7,7 @@
 #include <string.h>
 #include <list>
 #include <fcntl.h>
+#include <chrono>
 
 #define PORT 8080
 #define CLIENT_BUFFER_SIZE 3072
@@ -16,6 +17,9 @@
 
 using namespace std;
 using namespace chat;
+using namespace std::chrono;
+
+pthread_mutex_t mutexP;
 
 struct User {
     string username;
@@ -26,6 +30,12 @@ struct User {
 
 struct threadInfo {
     int socketFD;
+};
+
+struct ActivityInfo {
+    int socketFD;
+    steady_clock::time_point* start_time;
+    bool* isActive;
 };
  
 
@@ -59,13 +69,14 @@ void generalMessage(newMessage userMessage) {
     serverResponse.set_code(200);
     serverResponse.set_servermessage("Mensaje enviado");
     string response = serverResponse.SerializeAsString();
-    
+
     for (User user : connectedUsers) {
-        send(user.socketFD , response.c_str() , response.size() , 0 );
+        if (user.status != 2)
+            send(user.socketFD , response.c_str() , response.size() , 0 );
     }
 }
 
-void directMessage(newMessage userMessage) {
+bool directMessage(newMessage userMessage) {
     ServerResponse serverResponse;
     string username = userMessage.recipient();
 
@@ -80,15 +91,52 @@ void directMessage(newMessage userMessage) {
     string response = serverResponse.SerializeAsString();
     bool userFound = false;
     for (User user : connectedUsers) {
-        if (user.username == username) {
+        if (user.username == username && user.status != 2) {
+            cout << "mensaje enviado a " << user.username << endl;
             userFound = true;
             send(user.socketFD , response.c_str() , response.size() , 0 );
         }
     }
 
-    if (!userFound) {
-        serverResponse.set_code(400);
-        serverResponse.set_servermessage("User no found.");
+    return userFound;
+}
+
+void on_timeout(int fd) {
+    for (auto& user : connectedUsers) {
+        if (user.socketFD == fd) {
+            cout << "Status change to inactive for user: " << user.username << endl;
+            user.status = 3;
+        }
+    }
+}
+
+void* checkActivity (void* arg) {
+    struct ActivityInfo* info = (struct ActivityInfo*)arg;
+    duration<int> time_limit = seconds(30);
+
+    while (true) {
+        steady_clock::time_point current_time = steady_clock::now();
+        duration<int> elapsed_time = duration_cast<seconds>(current_time - *info->start_time);
+
+        // Comprueba si se ha alcanzado el límite de tiempo
+        if (elapsed_time >= time_limit && (*info->isActive)) {
+            on_timeout(info->socketFD);
+            // Reinicia el temporizador estableciendo un nuevo tiempo de referencia
+            *info->start_time = steady_clock::now();
+            *info->isActive = false;
+        }
+    }
+}
+
+void activeUser(int fd, bool* isActive) {
+    if (!(*isActive)) {
+        for (auto& user : connectedUsers) {
+            if (user.socketFD == fd) {
+                cout << "Status change to active for user: " << user.username << endl;
+                user.status = 1;
+            }
+        }
+        *isActive = true;
     }
 }
 
@@ -114,11 +162,25 @@ void* connectionHandler(void* arg) {
     AllConnectedUsers allConnectedUsers;
 
     UserInfo userInfo;
-    
 
+    pthread_t activityThread;
 
     // Se obtiene el socket_fd de la estructura
     int new_socket = data->socketFD;
+
+    bool* isActive = new bool;
+    *isActive = true;
+
+    
+    steady_clock::time_point start_time = steady_clock::now();
+    steady_clock::time_point* ptr_start_time = &start_time;
+
+    struct ActivityInfo* info = new ActivityInfo;
+    info->socketFD = new_socket;
+    info->start_time = ptr_start_time;
+    info->isActive = isActive;
+
+    pthread_create(&activityThread, NULL, checkActivity, (void *) info);
 
     bool notClosed = true;
 
@@ -138,6 +200,11 @@ void* connectionHandler(void* arg) {
 
         string response;
         bool userFound = false;
+
+        if (option != 0) {
+            *ptr_start_time = steady_clock::now();
+            activeUser(new_socket, isActive);
+        }
         
         switch (option)
         {
@@ -148,7 +215,7 @@ void* connectionHandler(void* arg) {
 
 
             if (isUserConnected(userRegister.username(), userRegister.ip()) == 0) {
-                printf("Usuario registrado\n");
+                printf("Nuevo usuario registrado\n");
                 serverResponse.set_option(1);
                 serverResponse.set_code(200);
                 serverResponse.set_servermessage("Usuario registrado");
@@ -157,7 +224,9 @@ void* connectionHandler(void* arg) {
                 user.ip =userRegister.ip();
                 user.socketFD = new_socket;
                 user.status = 1;
+                pthread_mutex_lock(&mutexP);
                 connectedUsers.push_back(user);
+                pthread_mutex_unlock(&mutexP);
 
             } else {
                 printf("Usuario ya registrado\n");
@@ -251,16 +320,24 @@ void* connectionHandler(void* arg) {
             break;
         case 4://Nuevo mensaje
             userMessage = userRequest.message();
-
+            bool responseMessage;
+            responseMessage = true;
             if (userMessage.message_type()) {
                 generalMessage(userMessage);
             }
             else {
-                directMessage(userMessage);
+                responseMessage = directMessage(userMessage);
             }
-            serverResponse.set_code(200);
-            serverResponse.set_option(4);
-            serverResponse.set_servermessage("Mensaje enviado correctamente.");
+            if (responseMessage) {
+                serverResponse.set_code(200);
+                serverResponse.set_option(4);
+                serverResponse.set_servermessage("Mensaje enviado correctamente.");
+            }
+            else {
+                serverResponse.set_code(400);
+                serverResponse.set_option(4);
+                serverResponse.set_servermessage("Error: el mensaje no se pudo enviar.");
+            }
 
             response = serverResponse.SerializeAsString();
             // cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
@@ -281,6 +358,10 @@ void* connectionHandler(void* arg) {
     cout << "Closing user connection gracefully..." << endl;
     deleteUser(user.username, user.ip);
     close(new_socket);
+
+    pthread_cancel(activityThread);
+    pthread_join(activityThread, NULL);
+
     pthread_exit(0);
 }
 
@@ -290,6 +371,8 @@ int main(){
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
+
+    pthread_mutex_init(&mutexP, NULL);
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
@@ -332,6 +415,7 @@ int main(){
         }
     }
     shutdown(server_fd, SHUT_RDWR);
+    pthread_mutex_destroy(&mutexP);
     return 0;
 
 }
