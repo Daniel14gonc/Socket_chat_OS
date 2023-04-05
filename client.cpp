@@ -361,7 +361,8 @@ int main(int argc, char** argv) {
                     cout << "Presione 5 si desea mandar un mensaje general recuerde que el formato es:" << endl;
                     cout << "mensaje mensaje mensaje" << endl;
                     cout << "Presionar 6 fue la opción que te trao aqui" << endl;
-                    cout << "Presione 7 si desea salir" << endl;
+                    cout << "Presione 7 si desea salir" << endl << endl;
+                    break;
                 }
 
                 case 7:{

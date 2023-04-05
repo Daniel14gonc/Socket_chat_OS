@@ -195,6 +195,10 @@ void* connectionHandler(void* arg) {
 
         string request = (string) buffer;
         userRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
+
+        if (!userRequest.has_option()) {
+            break;
+        }
             
 
         int option = userRequest.option();
