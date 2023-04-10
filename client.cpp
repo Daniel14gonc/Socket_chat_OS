@@ -36,8 +36,18 @@ void processAllConnectedUsers(const AllConnectedUsers& allUsers) {
     // Iterar a través de todos los usuarios conectados en el campo connectedUsers
     for (const auto& userInfo : allUsers.connectedusers()) {
         cout << "Usuario #" << contador << ":" << endl;
+        int status = userInfo.status();
+        string Sstatus = "";
+        if(status == 1)
+            Sstatus = "Activo";
+        else if(status == 2)
+            Sstatus = "Ocupado";
+        else if(status == 3)
+            Sstatus = "Inactivo";
+        else
+            Sstatus = "Desconocido";
         // Acceder a las propiedades de cada usuario conectado (por ejemplo, el nombre de usuario y la dirección IP)
-        cout << "\tUsuario: " << userInfo.username() << ", IP: " << userInfo.ip() << ", Estado: " << userInfo.status() << endl;
+        cout << "\tUsuario: " << userInfo.username() << ", IP: " << userInfo.ip() << ", Estado: " << Sstatus << endl;
         contador++;
     }
 }
@@ -86,7 +96,16 @@ void* receiveMessages(void* arg) {
                     cout << "User info:" << endl;
                     cout << "\tUsername: " << userInfo.username() << endl;
                     cout << "\tIP: " << userInfo.ip() << endl;
-                    cout << "\tStatus: " << userInfo.status() << endl;
+                    // 1 = activo , 2 = ocupado, 3 = inactivo
+                    int status = userInfo.status();
+                    if(status == 1)
+                        cout << "\tStatus: Activo" << endl;
+                    else if(status == 2)
+                        cout << "\tStatus: Ocupado" << endl;
+                    else if(status == 3)
+                        cout << "\tStatus: Inactivo" << endl;
+                    else
+                        cout << "\tStatus: " << userInfo.status() << endl;
                 } else {
                     cout << "Connected users:" << endl;
                     processAllConnectedUsers(allConectedUsers);
