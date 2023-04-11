@@ -322,7 +322,7 @@ int main(int argc, char** argv) {
                     ChangeStatus* userStatus = userRequest.mutable_status();
 
                     userStatus->set_newstatus(newSttat);
-                    userStatus->set_username("user");
+                    userStatus->set_username(username);
 
                     string request = userRequest.SerializeAsString();
 
