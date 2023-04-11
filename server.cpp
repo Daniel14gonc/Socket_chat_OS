@@ -206,7 +206,7 @@ void* connectionHandler(void* arg) {
         string response;
         bool userFound = false;
 
-        if (option != 0) {
+        if (option != 0 || option != 5) {
             *ptr_start_time = steady_clock::now();
             activeUser(new_socket, isActive);
         }
