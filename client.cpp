@@ -65,7 +65,7 @@ void* sendHeartbeat(void* arg){
         write(ClientDescriptor, request.c_str(), request.size());
         pthread_mutex_unlock(&mutexP);
 
-        sleep(30);
+        sleep(5);
     }
     return NULL;
 }
