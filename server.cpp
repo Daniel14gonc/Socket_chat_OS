@@ -283,7 +283,7 @@ void* connectionHandler(void* arg) {
                             userInfo.set_username(user.username);
                             userInfo.set_ip(user.ip);
                             userInfo.set_status(user.status);
-                            //allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
+                            //allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);r
                             serverResponse.mutable_userinforesponse()->CopyFrom(userInfo);
                         }
                     }
