@@ -21,6 +21,8 @@
 using namespace std;
 using namespace chat;
 
+bool serverOnline = true;
+
 
 pthread_mutex_t mutexP;
 
@@ -63,7 +65,7 @@ void* sendHeartbeat(void* arg){
         write(ClientDescriptor, request.c_str(), request.size());
         pthread_mutex_unlock(&mutexP);
 
-        sleep(3000000000);
+        sleep(30);
     }
     return NULL;
 }
@@ -76,6 +78,7 @@ void* receiveMessages(void* arg) {
     while (true) {
         int valread = read(clientDescriptor, buffer, CLIENT_BUFFER_SIZE);
         if (valread <= 0) {
+            serverOnline = false;
             break;
         }
         buffer[valread] = '\0';
@@ -266,7 +269,7 @@ int main(int argc, char** argv) {
 
 
         int bandera =0;
-        while (bandera ==0 ){
+        while (bandera ==0 && serverOnline){
             cout << "1. Obtener listado de usuarios conectados" << endl;
             cout << "2. Obtener informacion de usuario especifico" << endl;
             cout << "3. Cambio de status de usuario" << endl;
