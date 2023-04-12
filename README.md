@@ -1,4 +1,4 @@
-# LAB7_IA
+# Proyecto Chat 
 
 ## Compilación de archivos
 
@@ -27,3 +27,6 @@ El nombre de usuario va en lugar de username, al igual que la IP del servidor al
 ./server PORT
 
 En PORT se especifica el puerto en el que se desea que se corra el servidor.
+
+### La ip para nuestro servidor es
+3.211.186.31
