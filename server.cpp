@@ -197,169 +197,181 @@ void* connectionHandler(void* arg) {
             break;
         }
 
-        string request = (string) buffer;
-        userRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
-            
-        int option = userRequest.option();
-        cout << option << endl;
+        try {
+            string request = (string) buffer;
+            userRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
+                
+            int option = userRequest.option();
+            cout << option << endl;
 
-        string response;
-        bool userFound = false;
+            string response;
+            bool userFound = false;
 
-        if (option != 0 || option != 5) {
-            *ptr_start_time = steady_clock::now();
-            activeUser(new_socket, isActive);
-        }
-        
-        switch (option)
-        {
-        case 1:// Registro de Usuarios
-            userRegister = userRequest.newuser();
-            cout << "El username es: " << userRegister.username() << endl;
-            cout << "El ip es: " << userRegister.ip() << endl;
-
-
-            if (isUserConnected(userRegister.username(), userRegister.ip()) == 0) {
-                printf("Nuevo usuario registrado\n");
-                serverResponse.set_option(1);
-                serverResponse.set_code(200);
-                serverResponse.set_servermessage("Usuario registrado");
-
-                user.username = userRegister.username();
-                user.ip =userRegister.ip();
-                user.socketFD = new_socket;
-                user.status = 1;
-                pthread_mutex_lock(&mutexP);
-                connectedUsers.push_back(user);
-                pthread_mutex_unlock(&mutexP);
-
-            } else {
-                printf("Usuario ya registrado\n");
-                serverResponse.set_option(1);
-                serverResponse.set_code(400);
-                serverResponse.set_servermessage("Usuario ya existente");
+            if (option != 0 || option != 5) {
+                *ptr_start_time = steady_clock::now();
+                activeUser(new_socket, isActive);
             }
             
-            response = serverResponse.SerializeAsString();
-            
-            break;
-        
-        case 2:// Informacion de usuario
-            userInfoRequest = userRequest.inforequest(); 
-            cout << "El tipo de request es: " << userInfoRequest.type_request() << endl; 
-            cout << "El usuario es: " << userInfoRequest.user() << endl; 
+            switch (option)
+            {
+            case 1:// Registro de Usuarios
+                userRegister = userRequest.newuser();
+                cout << "El username es: " << userRegister.username() << endl;
+                cout << "El ip es: " << userRegister.ip() << endl;
 
-            AllConnectedUsers* allConnectedUsers;
-            if (userInfoRequest.type_request()) {
-                allConnectedUsers = new AllConnectedUsers;
-                printf("Informacion de todos los usuarios\n");
-                serverResponse.set_option(2);
-                serverResponse.set_code(200);
-                serverResponse.set_servermessage("Informacion de todos los usuarios");
-                for (User user : connectedUsers) {
-                    UserInfo userInfo;
-                    userInfo.set_username(user.username);
-                    userInfo.set_ip(user.ip);
-                    userInfo.set_status(user.status);
-                    allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
+
+                if (isUserConnected(userRegister.username(), userRegister.ip()) == 0) {
+                    printf("Nuevo usuario registrado\n");
+                    serverResponse.set_option(1);
+                    serverResponse.set_code(200);
+                    serverResponse.set_servermessage("Usuario registrado");
+
+                    user.username = userRegister.username();
+                    user.ip =userRegister.ip();
+                    user.socketFD = new_socket;
+                    user.status = 1;
+                    pthread_mutex_lock(&mutexP);
+                    connectedUsers.push_back(user);
+                    pthread_mutex_unlock(&mutexP);
+
+                } else {
+                    printf("Usuario ya registrado\n");
+                    serverResponse.set_option(1);
+                    serverResponse.set_code(400);
+                    serverResponse.set_servermessage("Usuario ya existente");
                 }
-
-                serverResponse.set_allocated_connectedusers(allConnectedUsers);
-
-
-            } else {
-                printf("Informacion de un usuario\n");
-                serverResponse.set_option(2);
-                serverResponse.set_code(200);
-                serverResponse.set_servermessage("Informacion de un usuario");
                 
-                userFound = false;
-                for (User user : connectedUsers) {
-                    if (user.username == userInfoRequest.user()) {
-                        userFound = true;
-                        //userInfo = new UserInfo;
-                        //UserInfo* userInfo = serverResponse.add_userinforesponse();
+                response = serverResponse.SerializeAsString();
+                
+                break;
+            
+            case 2:// Informacion de usuario
+                userInfoRequest = userRequest.inforequest(); 
+                cout << "El tipo de request es: " << userInfoRequest.type_request() << endl; 
+                cout << "El usuario es: " << userInfoRequest.user() << endl; 
+
+                AllConnectedUsers* allConnectedUsers;
+                if (userInfoRequest.type_request()) {
+                    allConnectedUsers = new AllConnectedUsers;
+                    printf("Informacion de todos los usuarios\n");
+                    serverResponse.set_option(2);
+                    serverResponse.set_code(200);
+                    serverResponse.set_servermessage("Informacion de todos los usuarios");
+                    for (User user : connectedUsers) {
+                        UserInfo userInfo;
                         userInfo.set_username(user.username);
                         userInfo.set_ip(user.ip);
                         userInfo.set_status(user.status);
-                        //allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
-                        serverResponse.mutable_userinforesponse()->CopyFrom(userInfo);
+                        allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
+                    }
+
+                    serverResponse.set_allocated_connectedusers(allConnectedUsers);
+
+
+                } else {
+                    printf("Informacion de un usuario\n");
+                    serverResponse.set_option(2);
+                    serverResponse.set_code(200);
+                    serverResponse.set_servermessage("Informacion de un usuario");
+                    
+                    userFound = false;
+                    for (User user : connectedUsers) {
+                        if (user.username == userInfoRequest.user()) {
+                            userFound = true;
+                            //userInfo = new UserInfo;
+                            //UserInfo* userInfo = serverResponse.add_userinforesponse();
+                            userInfo.set_username(user.username);
+                            userInfo.set_ip(user.ip);
+                            userInfo.set_status(user.status);
+                            //allConnectedUsers->add_connectedusers()->CopyFrom(userInfo);
+                            serverResponse.mutable_userinforesponse()->CopyFrom(userInfo);
+                        }
+                    }
+
+                    if (!userFound) {
+                            serverResponse.set_code(400);
+                            serverResponse.set_servermessage("Usuario no encontrado");
+                        }
+
+                }
+                response = serverResponse.SerializeAsString();
+                // delete allConnectedUsers;
+                
+                break;
+            case 3:// Cambio de status
+                changeStatus = userRequest.status();
+                cout << "El usuario es: " << changeStatus.username() << endl;
+                cout << "El nuevo status es: " << changeStatus.newstatus() << endl;
+
+                userFound = false;
+                for (auto& user : connectedUsers) {
+                    if (user.username == changeStatus.username()) {
+                        user.status = changeStatus.newstatus();
+                        userFound = true;
                     }
                 }
 
-                if (!userFound) {
-                        serverResponse.set_code(400);
-                        serverResponse.set_servermessage("Usuario no encontrado");
-                    }
+                if (userFound) {
+                    serverResponse.set_option(3);
+                    serverResponse.set_code(200);
+                    serverResponse.set_servermessage("Status cambiado");
+                } else {
+                    serverResponse.set_option(3);
+                    serverResponse.set_code(400);
+                    serverResponse.set_servermessage("Usuario no encontrado");
+                }   
 
-            }
-            response = serverResponse.SerializeAsString();
-            // delete allConnectedUsers;
-            
-            break;
-        case 3:// Cambio de status
-            changeStatus = userRequest.status();
-            cout << "El usuario es: " << changeStatus.username() << endl;
-            cout << "El nuevo status es: " << changeStatus.newstatus() << endl;
+                response = serverResponse.SerializeAsString();
+                
 
-            userFound = false;
-            for (auto& user : connectedUsers) {
-                if (user.username == changeStatus.username()) {
-                    user.status = changeStatus.newstatus();
-                    userFound = true;
+                break;
+            case 4://Nuevo mensaje
+                userMessage = userRequest.message();
+                bool responseMessage;
+                responseMessage = true;
+                if (userMessage.message_type()) {
+                    generalMessage(userMessage);
                 }
-            }
+                else {
+                    responseMessage = directMessage(userMessage);
+                }
+                if (responseMessage) {
+                    serverResponse.set_code(200);
+                    serverResponse.set_option(4);
+                    serverResponse.set_servermessage("Mensaje enviado correctamente.");
+                }
+                else {
+                    serverResponse.set_code(400);
+                    serverResponse.set_option(4);
+                    serverResponse.set_servermessage("Error: el mensaje no se pudo enviar.");
+                }
 
-            if (userFound) {
-                serverResponse.set_option(3);
-                serverResponse.set_code(200);
-                serverResponse.set_servermessage("Status cambiado");
-            } else {
-                serverResponse.set_option(3);
-                serverResponse.set_code(400);
-                serverResponse.set_servermessage("Usuario no encontrado");
-            }   
-
-            response = serverResponse.SerializeAsString();
-            
-
-            break;
-        case 4://Nuevo mensaje
-            userMessage = userRequest.message();
-            bool responseMessage;
-            responseMessage = true;
-            if (userMessage.message_type()) {
-                generalMessage(userMessage);
+                response = serverResponse.SerializeAsString();
+                // cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
+                // cout << "El emisor es: " << userMessage.sender() << endl;
+                // cout << "El receptor es: " << userMessage.recipient() << endl;
+                // cout << "El mensaje es: " << userMessage.message() << endl;
+                break;
+            case 5://Heartbeat
+                printf("Hearbeat\n");
+                break;
+            default:
+                notClosed = false;
+                break;
             }
-            else {
-                responseMessage = directMessage(userMessage);
-            }
-            if (responseMessage) {
-                serverResponse.set_code(200);
-                serverResponse.set_option(4);
-                serverResponse.set_servermessage("Mensaje enviado correctamente.");
-            }
-            else {
-                serverResponse.set_code(400);
-                serverResponse.set_option(4);
-                serverResponse.set_servermessage("Error: el mensaje no se pudo enviar.");
-            }
-
-            response = serverResponse.SerializeAsString();
-            // cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
-            // cout << "El emisor es: " << userMessage.sender() << endl;
-            // cout << "El receptor es: " << userMessage.recipient() << endl;
-            // cout << "El mensaje es: " << userMessage.message() << endl;
-            break;
-        case 5://Heartbeat
-            printf("Hearbeat\n");
-            break;
-        default:
-            notClosed = false;
-            break;
+            send(new_socket , response.c_str() , response.size() , 0 );
+            printf("Hello message sent\n");
         }
-        send(new_socket , response.c_str() , response.size() , 0 );
-        printf("Hello message sent\n");
+        catch (const exception& e) {
+            serverResponse.set_option(1);
+            serverResponse.set_code(400);
+            serverResponse.set_servermessage("Error en request");
+            string response = serverResponse.SerializeAsString();
+            send(new_socket , response.c_str() , response.size() , 0 );
+            continue;
+        }
+
+        
     }
     cout << "Closing user connection gracefully..." << endl;
     deleteUser(user.username, user.ip);
