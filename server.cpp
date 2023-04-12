@@ -250,6 +250,8 @@ void* connectionHandler(void* arg) {
                 cout << "El tipo de request es: " << userInfoRequest.type_request() << endl; 
                 cout << "El usuario es: " << userInfoRequest.user() << endl; 
 
+                serverResponse.clear_connectedusers();
+
                 AllConnectedUsers* allConnectedUsers;
                 if (userInfoRequest.type_request()) {
                     allConnectedUsers = new AllConnectedUsers;
