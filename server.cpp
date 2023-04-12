@@ -1,3 +1,13 @@
+/*
+*   Autores: Sebastian Aristondo, Juan Angel Carrera, Daniel González
+*   Descripción:
+*           Programa que funge como servidor para el manejo de conexiones por medio de sockets
+*           de forma que se puedan manejar mensajes entre usuarios y otras funcionalidades.
+*/
+
+
+
+
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +32,7 @@ using namespace std::chrono;
 
 pthread_mutex_t mutexP;
 
+// Estrucutra para almacenar la información de los usuarios conectados
 struct User {
     string username;
     string ip;
@@ -29,20 +40,22 @@ struct User {
     int status;
 };
 
+// Estrucutra para almacenar informacion del socket
 struct threadInfo {
     int socketFD;
 };
 
+// Estructura para almacenar el estado del usuario
 struct ActivityInfo {
     int socketFD;
     steady_clock::time_point* start_time;
     bool* isActive;
 };
  
-
+// Listado de usuarios
 list<User> connectedUsers;
 
-
+//Verificar si un usuario esta conectado
 int isUserConnected(string username, string ip) {
     for (User user : connectedUsers) {
         if (user.username == username && user.ip == ip) {
@@ -53,6 +66,7 @@ int isUserConnected(string username, string ip) {
     return 0;
 }
 
+// Elimimnar a un usuario de la lista de usuarios conectados
 int deleteUser(string usernamef, string ipf) {
 
     auto it = std::find_if(connectedUsers.begin(), connectedUsers.end(), [usernamef,ipf](const User& user) { return (usernamef == user.username && ipf == user.ip); });
@@ -63,6 +77,7 @@ int deleteUser(string usernamef, string ipf) {
     return 0;
 }
 
+// Función para el manejo de mensajes generales
 void generalMessage(newMessage userMessage) {
     ServerResponse serverResponse;
     serverResponse.mutable_message()->CopyFrom(userMessage);
@@ -77,6 +92,7 @@ void generalMessage(newMessage userMessage) {
     }
 }
 
+// Funcion para el manejo de mensajes directos
 bool directMessage(newMessage userMessage) {
     ServerResponse serverResponse;
     string username = userMessage.recipient();
@@ -102,6 +118,7 @@ bool directMessage(newMessage userMessage) {
     return userFound;
 }
 
+// Funcion para el manejo de mensajes de estado por inactividad
 void on_timeout(int fd) {
     for (auto& user : connectedUsers) {
         if (user.socketFD == fd) {
@@ -111,6 +128,7 @@ void on_timeout(int fd) {
     }
 }
 
+// Funcion para controlar el tiempo de inactividad de los usuarios
 void* checkActivity (void* arg) {
     struct ActivityInfo* info = (struct ActivityInfo*)arg;
     duration<int> time_limit = seconds(30);
@@ -129,6 +147,8 @@ void* checkActivity (void* arg) {
     }
 }
 
+
+// Funcion para reactivar usuarios inactivos
 void activeUser(int fd, bool* isActive) {
     if (!(*isActive)) {
         for (auto& user : connectedUsers) {
@@ -141,6 +161,7 @@ void activeUser(int fd, bool* isActive) {
     }
 }
 
+// Funcion para el manejo de las peticiones de los clientes
 void* connectionHandler(void* arg) {
     
     struct threadInfo* data = (struct threadInfo*)arg;
@@ -173,7 +194,7 @@ void* connectionHandler(void* arg) {
     bool* isActive = new bool;
     *isActive = true;
 
-    
+    // Se crea un timer para que cada 30 segundos, si el usuario no ha hecho nada, se cambie su estado a inactivo.
     steady_clock::time_point start_time = steady_clock::now();
     steady_clock::time_point* ptr_start_time = &start_time;
 
@@ -186,6 +207,7 @@ void* connectionHandler(void* arg) {
 
     bool notClosed = true;
 
+    // Mientras la conexión sea válida
     while (notClosed)
     {
         cout << "Server: Waiting for request..." << endl;
@@ -197,6 +219,7 @@ void* connectionHandler(void* arg) {
             break;
         }
 
+        // Validacion de la implementacion del proto
         try {
             string request = (string) buffer;
             userRequest.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
@@ -212,6 +235,7 @@ void* connectionHandler(void* arg) {
                 activeUser(new_socket, isActive);
             }
             
+            //manejo de opciones
             switch (option)
             {
             case 1:// Registro de Usuarios
@@ -347,10 +371,6 @@ void* connectionHandler(void* arg) {
                 }
 
                 response = serverResponse.SerializeAsString();
-                // cout << "El tipo de mensaje es: " << userMessage.message_type() << endl;
-                // cout << "El emisor es: " << userMessage.sender() << endl;
-                // cout << "El receptor es: " << userMessage.recipient() << endl;
-                // cout << "El mensaje es: " << userMessage.message() << endl;
                 break;
             case 5://Heartbeat
                 printf("Hearbeat\n");
@@ -373,6 +393,7 @@ void* connectionHandler(void* arg) {
 
         
     }
+    // Cierra el socket
     cout << "Closing user connection gracefully..." << endl;
     deleteUser(user.username, user.ip);
     close(new_socket);
@@ -419,6 +440,7 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
+    // Se indica al socket que escuche por nuevas conexiones.
     if (listen(server_fd, 3) < 0){
         perror("listen");
         exit(EXIT_FAILURE);
@@ -426,12 +448,16 @@ int main(int argc, char** argv){
 
     while (true) {
         cout << "Waiting for new connections..." << endl;
+        // Se maneja una nueva conexión
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0){
             perror("accept");
             exit(EXIT_FAILURE);
         }
         else {
+            // Si la conexión es aceptada, se crea un nuevo thread que maneja la sesión del usuario.
             pthread_t thread;
+
+            // Se envía el file descriptor de la conexión para poder identificar que usuario conectado se está comunicando.
             struct threadInfo* data = new threadInfo;
             data->socketFD = new_socket;
             pthread_create(&thread, NULL, connectionHandler, (void *) data);

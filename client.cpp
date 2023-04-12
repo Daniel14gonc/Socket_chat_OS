@@ -1,3 +1,11 @@
+/*
+*   Autores: Sebastian Aristondo, Juan Angel Carrera, Daniel González
+*   Descripción:
+*           Programa que funge como cliente con sockets, que permite enviar mensajes, conectar a un servidor
+*           y solicitar información.
+*/
+
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -10,7 +18,6 @@
 #include <pthread.h>
 #include <iostream>
 #include <curl/curl.h>
-//#include <jsoncpp/json/json.h>
 
 //ProtoBuff
 #include "project.pb.h"
@@ -54,7 +61,7 @@ void processAllConnectedUsers(const AllConnectedUsers& allUsers) {
     }
 }
 
-
+// Funcion para enviar heartbeat
 void* sendHeartbeat(void* arg){
     int ClientDescriptor = *((int*)arg);
     while (true){
@@ -65,12 +72,13 @@ void* sendHeartbeat(void* arg){
         write(ClientDescriptor, request.c_str(), request.size());
         pthread_mutex_unlock(&mutexP);
 
+        // Tiempo de espera para enviar el heartbeat
         sleep(5);
     }
     return NULL;
 }
 
-
+// Recibir respuestas del servidor
 void* receiveMessages(void* arg) {
     int clientDescriptor = *((int*)arg);
     char buffer[CLIENT_BUFFER_SIZE];
@@ -83,11 +91,11 @@ void* receiveMessages(void* arg) {
         }
         buffer[valread] = '\0';
         serverResponse.ParseFromArray(buffer, CLIENT_BUFFER_SIZE);
-        // pthread_mutex_lock(&mutexP);
         int option = serverResponse.option();
         string Smessage = serverResponse.servermessage();
         int code = serverResponse.code();
 
+        // Usuario/s conectado/s
         if (option == 2) {
             AllConnectedUsers allConectedUsers = serverResponse.connectedusers();
             UserInfo userInfo = serverResponse.userinforesponse();
@@ -114,11 +122,11 @@ void* receiveMessages(void* arg) {
                     processAllConnectedUsers(allConectedUsers);
                 }
             }
-
+        // Cambio de estado
         }else if (option == 3) {
             cout << "Server response: " << Smessage << endl;
 
-        } else
+        } else // Mensaje general o privado
         if (option == 4) {
             newMessage msg = serverResponse.message();
             if (msg.message_type()) {
@@ -138,7 +146,6 @@ void* receiveMessages(void* arg) {
 
             }
         } 
-        // pthread_mutex_unlock(&mutexP);
 
     }
 
@@ -157,6 +164,8 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
     return size * nmemb;
 }
 
+
+// Funcion para obtener la ip publica 
 string get_ip()
 {
     CURL *curl;
@@ -199,8 +208,8 @@ int main(int argc, char** argv) {
     UserRequest userRequest;
     UserRegister* registerUser = userRequest.mutable_newuser();
     
+    // Log In del usuario
     userRequest.set_option(1);
-    
     registerUser->set_ip(own_ip);
     registerUser->set_username(username);
 
@@ -208,6 +217,8 @@ int main(int argc, char** argv) {
 
     string request = userRequest.SerializeAsString();
     
+
+    // Coneccion al servidor
     if (clientDescriptor < 0) {
         perror("socket creation error");
         return -1;
@@ -244,11 +255,8 @@ int main(int argc, char** argv) {
     
     
 
-    // 1. Obtener listado de usuarios conectados
-    // 2. Obtener inforamcion de usuario especifico
-    // 3. Cambio de status de usuario
-    // 4. Mandar mensaje directo
-    // 5. Mandar mensaje general
+    // Si la conexion fue exitosa se crean los hilos 
+    //para recibir mensajes,mandar heartbeat y mandar mensajes
     if (conectioncode == 200){
         pthread_t receiveThread;
         pthread_mutex_init(&mutexP, NULL);
@@ -260,14 +268,7 @@ int main(int argc, char** argv) {
         pthread_detach(receiveThread); // Desvincula el thread para que no sea necesario esperar a su finalización.
 
         pthread_t sendThread;
-       // int createResult2 = pthread_create(&sendThread, NULL, sendHeartbeat, (void*)&clientDescriptor);
-        // if (createResult2 != 0) {
-        //     perror("Error al crear el hilo");
-        //     return -1;
-        // }
-      //  pthread_detach(sendThread); // Desvincula el thread para que no sea necesario esperar a su finalización.
-
-
+       
         int bandera =0;
         while (bandera ==0 && serverOnline){
             cout << "1. Obtener listado de usuarios conectados" << endl;
@@ -281,7 +282,7 @@ int main(int argc, char** argv) {
             int opcion;
             cin >> opcion;
             switch (opcion){
-                case 1:{
+                case 1:{ //Obtener listado de usuarios conectados
                     UserRequest userRequest;
                     userRequest.set_option(2);
 
@@ -294,7 +295,8 @@ int main(int argc, char** argv) {
                     write(clientDescriptor, request.c_str(), request.size());
                     break;
                 }
-                case 2:{
+                
+                case 2:{ //Obtener informacion de usuario especifico
                     UserRequest userRequest;
                     userRequest.set_option(2);
 
@@ -312,7 +314,7 @@ int main(int argc, char** argv) {
                     write(clientDescriptor, request.c_str(), request.size());
                     break;
                 }
-                case 3:{
+                case 3:{ //Cambio de status de usuario
                     cout << "1. Activo" << endl;
                     cout << "2. Ocupado" << endl;
                     cout << "3. InActivo" << endl;
@@ -332,7 +334,7 @@ int main(int argc, char** argv) {
                     write(clientDescriptor, request.c_str(), request.size());
                     break;
                 }
-                case 4:{
+                case 4:{ //Mandar mensaje directo
                     UserRequest userRequest;
                     userRequest.set_option(4);
 
@@ -353,7 +355,7 @@ int main(int argc, char** argv) {
                     write(clientDescriptor, request.c_str(), request.size());
                     break;
                 }
-                case 5:{
+                case 5:{ //Mandar mensaje general
                     UserRequest userRequest;
                     userRequest.set_option(4);
 
@@ -373,7 +375,7 @@ int main(int argc, char** argv) {
                     write(clientDescriptor, request.c_str(), request.size());
                     break;
                 }
-                case 6:{
+                case 6:{ //Ayuda
                     cout << "Bienvenido a ayuda" << endl;
                     cout << "Presione 1 si desea obtener el listado de usuarios conectados" << endl;
                     cout << "Presione 2 si desea obtener informacion de un usuario especifico" << endl;
@@ -387,11 +389,11 @@ int main(int argc, char** argv) {
                     break;
                 }
 
-                case 7:{
+                case 7:{ //Salir
                     bandera = 1;
                     break;
                 }
-                default:{
+                default:{ // Opcion no valida
                     cout << "Opcion no valida" << endl;
                     break;
                 }
